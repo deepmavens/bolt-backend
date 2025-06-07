@@ -1,8 +1,8 @@
-
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, Menu, User, Crown } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TopBarProps {
   onToggleSidebar: () => void;
@@ -11,6 +11,7 @@ interface TopBarProps {
 
 const TopBar = ({ onToggleSidebar, userRole }: TopBarProps) => {
   const [notifications] = useState(3);
+  const { user, profile } = useAuth();
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
@@ -46,10 +47,10 @@ const TopBar = ({ onToggleSidebar, userRole }: TopBarProps) => {
             </div>
             <div className="text-left hidden md:block">
               <p className="text-sm font-medium">
-                {userRole === 'super_admin' ? 'Super Admin' : 'Restaurant Owner'}
+                {profile?.full_name || 'User'}
               </p>
               <p className="text-xs text-gray-600">
-                {userRole === 'super_admin' ? 'admin@teetours.com' : 'owner@restaurant.com'}
+                {user?.email}
               </p>
             </div>
           </Button>

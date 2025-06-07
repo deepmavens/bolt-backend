@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,36 +7,54 @@ import { Building2, Users, DollarSign, BarChart3, Plus, Settings, QrCode } from 
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { testConnection } from '@/lib/supabase';
 
 const Index = () => {
-  const [userRole, setUserRole] = useState<'super_admin' | 'kitchen_owner' | null>(null);
+  const { user, profile, loading } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'testing' | 'connected' | 'failed'>('testing');
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in
-    const storedRole = localStorage.getItem('userRole') as 'super_admin' | 'kitchen_owner' | null;
-    const storedEmail = localStorage.getItem('userEmail');
+    // Test Supabase connection
+    const checkConnection = async () => {
+      const isConnected = await testConnection();
+      setConnectionStatus(isConnected ? 'connected' : 'failed');
+    };
     
-    if (!storedRole || !storedEmail) {
+    checkConnection();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !user) {
       navigate('/login');
-      return;
     }
-    
-    setUserRole(storedRole);
-  }, [navigate]);
+  }, [user, loading, navigate]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Don't render anything if not authenticated
-  if (!userRole) {
+  if (!user || !profile) {
     return null;
   }
 
   // Mock data - in real app, this would come from Supabase
   const dashboardStats = {
-    totalOrders: userRole === 'super_admin' ? 1245 : 245,
-    totalRevenue: userRole === 'super_admin' ? 124500 : 12450,
-    activeKitchens: userRole === 'super_admin' ? 28 : 1,
-    todaysOrders: userRole === 'super_admin' ? 156 : 45
+    totalOrders: profile.role === 'super_admin' ? 1245 : 245,
+    totalRevenue: profile.role === 'super_admin' ? 124500 : 12450,
+    activeKitchens: profile.role === 'super_admin' ? 28 : 1,
+    todaysOrders: profile.role === 'super_admin' ? 156 : 45
   };
 
   const recentOrders = [
@@ -59,21 +76,41 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar userRole={userRole} isCollapsed={isCollapsed} />
+      <Sidebar userRole={profile.role} isCollapsed={isCollapsed} />
       
       <div className={cn("flex-1 transition-all duration-300", isCollapsed ? "ml-20" : "ml-64")}>
-        <TopBar onToggleSidebar={() => setIsCollapsed(!isCollapsed)} userRole={userRole} />
+        <TopBar onToggleSidebar={() => setIsCollapsed(!isCollapsed)} userRole={profile.role} />
         
         <main className="p-6">
+          {/* Connection Status */}
+          {connectionStatus === 'failed' && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800">
+                <strong>Database Connection Failed:</strong> Please check your Supabase configuration in the .env file.
+              </p>
+            </div>
+          )}
+          
+          {connectionStatus === 'connected' && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800">
+                <strong>Database Connected:</strong> Supabase is working properly.
+              </p>
+            </div>
+          )}
+
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              {userRole === 'super_admin' ? 'Super Admin Dashboard' : 'Restaurant Dashboard'}
+              Welcome, {profile.full_name}
             </h1>
             <p className="text-gray-600 mt-2">
-              {userRole === 'super_admin' 
+              {profile.role === 'super_admin' 
                 ? 'Manage all kitchens and monitor platform activity'
                 : 'Manage your restaurant operations and track performance'
               }
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Logged in as: {user.email} ({profile.role})
             </p>
           </div>
 
@@ -82,14 +119,14 @@ const Index = () => {
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {userRole === 'super_admin' ? 'Total Platform Orders' : 'Total Orders'}
+                  {profile.role === 'super_admin' ? 'Total Platform Orders' : 'Total Orders'}
                 </CardTitle>
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{dashboardStats.totalOrders}</div>
                 <p className="text-xs text-muted-foreground">
-                  {userRole === 'super_admin' ? '+18% from last month' : '+12% from last month'}
+                  {profile.role === 'super_admin' ? '+18% from last month' : '+12% from last month'}
                 </p>
               </CardContent>
             </Card>
@@ -97,14 +134,14 @@ const Index = () => {
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {userRole === 'super_admin' ? 'Platform Revenue' : 'Revenue'}
+                  {profile.role === 'super_admin' ? 'Platform Revenue' : 'Revenue'}
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">${dashboardStats.totalRevenue.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">
-                  {userRole === 'super_admin' ? '+15% from last month' : '+8% from last month'}
+                  {profile.role === 'super_admin' ? '+15% from last month' : '+8% from last month'}
                 </p>
               </CardContent>
             </Card>
@@ -112,16 +149,16 @@ const Index = () => {
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {userRole === 'super_admin' ? 'Active Kitchens' : 'Today\'s Orders'}
+                  {profile.role === 'super_admin' ? 'Active Kitchens' : 'Today\'s Orders'}
                 </CardTitle>
                 <Building2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {userRole === 'super_admin' ? dashboardStats.activeKitchens : dashboardStats.todaysOrders}
+                  {profile.role === 'super_admin' ? dashboardStats.activeKitchens : dashboardStats.todaysOrders}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {userRole === 'super_admin' ? '3 new this month' : '+5 from yesterday'}
+                  {profile.role === 'super_admin' ? '3 new this month' : '+5 from yesterday'}
                 </p>
               </CardContent>
             </Card>
@@ -129,16 +166,16 @@ const Index = () => {
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {userRole === 'super_admin' ? 'Total Users' : 'Customers'}
+                  {profile.role === 'super_admin' ? 'Total Users' : 'Customers'}
                 </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {userRole === 'super_admin' ? '5,247' : '1,247'}
+                  {profile.role === 'super_admin' ? '5,247' : '1,247'}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {userRole === 'super_admin' ? '+28% from last month' : '+23% from last month'}
+                  {profile.role === 'super_admin' ? '+28% from last month' : '+23% from last month'}
                 </p>
               </CardContent>
             </Card>
@@ -151,7 +188,7 @@ const Index = () => {
                 <div>
                   <CardTitle>Recent Orders</CardTitle>
                   <CardDescription>
-                    {userRole === 'super_admin' 
+                    {profile.role === 'super_admin' 
                       ? 'Latest orders across all kitchens' 
                       : 'Latest orders from your restaurant'
                     }
@@ -189,7 +226,7 @@ const Index = () => {
 
           {/* Quick Actions - Different for each role */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userRole === 'kitchen_owner' ? (
+            {profile.role === 'kitchen_owner' ? (
               <>
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/menu')}>
                   <CardHeader>

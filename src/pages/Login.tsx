@@ -1,12 +1,13 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Crown, Building2, Eye, EyeOff } from 'lucide-react';
+import { Crown, Building2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { signIn } from '@/lib/supabase';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -15,21 +16,32 @@ const Login = () => {
     role: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt:', formData);
+    setLoading(true);
+    setError('');
     
-    // Mock login logic
-    if (formData.role === 'super_admin') {
-      localStorage.setItem('userRole', 'super_admin');
-      localStorage.setItem('userEmail', formData.email);
-      navigate('/');
-    } else if (formData.role === 'kitchen_owner') {
-      localStorage.setItem('userRole', 'kitchen_owner');
-      localStorage.setItem('userEmail', formData.email);
-      navigate('/');
+    try {
+      const { data, error: signInError } = await signIn(formData.email, formData.password);
+      
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      if (data.user) {
+        console.log('Login successful:', data.user.email);
+        navigate('/');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,34 +58,17 @@ const Login = () => {
           <CardHeader>
             <CardTitle>Welcome Back</CardTitle>
             <CardDescription>
-              Choose your role and sign in to continue
+              Sign in to continue to your dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-6">
-              {/* Role Selection */}
-              <div>
-                <Label htmlFor="role">Login As *</Label>
-                <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="super_admin">
-                      <div className="flex items-center">
-                        <Crown className="h-4 w-4 mr-2 text-yellow-600" />
-                        Super Admin
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="kitchen_owner">
-                      <div className="flex items-center">
-                        <Building2 className="h-4 w-4 mr-2 text-blue-600" />
-                        Kitchen Owner
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
               {/* Email */}
               <div>
@@ -85,6 +80,7 @@ const Login = () => {
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   placeholder="Enter your email"
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -99,6 +95,7 @@ const Login = () => {
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     placeholder="Enter your password"
                     required
+                    disabled={loading}
                   />
                   <Button
                     type="button"
@@ -106,6 +103,7 @@ const Login = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    disabled={loading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -120,9 +118,9 @@ const Login = () => {
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={!formData.email || !formData.password || !formData.role}
+                disabled={!formData.email || !formData.password || loading}
               >
-                Sign In
+                {loading ? 'Signing In...' : 'Sign In'}
               </Button>
 
               {/* Signup Link for Kitchen Owners */}
@@ -132,6 +130,7 @@ const Login = () => {
                   variant="link" 
                   className="p-0 h-auto font-medium"
                   onClick={() => navigate('/registration')}
+                  disabled={loading}
                 >
                   Register here
                 </Button>

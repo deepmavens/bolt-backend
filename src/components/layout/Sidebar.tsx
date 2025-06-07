@@ -15,6 +15,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { signOut } from '@/lib/supabase';
 
 interface SidebarProps {
   userRole: 'super_admin' | 'kitchen_owner' | null;
@@ -25,17 +26,17 @@ const Sidebar = ({ userRole, isCollapsed }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    // Clear all user data from localStorage
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('isAuthenticated');
-    
-    // Navigate to login page
-    navigate('/login');
-    
-    // Force a page reload to ensure clean state
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: clear localStorage and navigate
+      localStorage.clear();
+      navigate('/login');
+      window.location.reload();
+    }
   };
 
   const kitchenOwnerNavItems = [

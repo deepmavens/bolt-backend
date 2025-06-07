@@ -4,10 +4,12 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+  console.error('Missing Supabase environment variables')
+  console.log('VITE_SUPABASE_URL:', supabaseUrl)
+  console.log('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Set' : 'Not set')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
 
 // Database types
 export interface Profile {
@@ -123,11 +125,16 @@ export const getCurrentProfile = async () => {
   const user = await getCurrentUser()
   if (!user) return null
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
+
+  if (error) {
+    console.error('Error fetching profile:', error)
+    return null
+  }
 
   return profile
 }
@@ -154,4 +161,20 @@ export const signUp = async (email: string, password: string, userData: any) => 
 export const signOut = async () => {
   const { error } = await supabase.auth.signOut()
   return { error }
+}
+
+// Test connection
+export const testConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('profiles').select('count').limit(1)
+    if (error) {
+      console.error('Supabase connection test failed:', error)
+      return false
+    }
+    console.log('Supabase connection successful')
+    return true
+  } catch (err) {
+    console.error('Supabase connection error:', err)
+    return false
+  }
 }
