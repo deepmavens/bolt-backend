@@ -228,7 +228,7 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {profile.role === 'kitchen_owner' ? (
               <>
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/menu')}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow\" onClick={() => navigate('/menu')}>
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Plus className="mr-2 h-5 w-5" />
