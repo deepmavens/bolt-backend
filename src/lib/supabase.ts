@@ -95,3 +95,18 @@ export const getCurrentProfile = async (): Promise<Profile | null> => {
   
   return profile;
 };
+
+export const testConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('profiles').select('count').limit(1);
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      return false;
+    }
+    console.log('Supabase connection successful');
+    return true;
+  } catch (err) {
+    console.error('Supabase connection error:', err);
+    return false;
+  }
+};
