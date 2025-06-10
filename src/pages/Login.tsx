@@ -135,8 +135,6 @@ const Login = () => {
                   Register here
                 </Button>
               </div>
-
-              
             </form>
           </CardContent>
         </Card>
